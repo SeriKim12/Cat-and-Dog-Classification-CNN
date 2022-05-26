@@ -1,0 +1,88 @@
+# 전이학습
+
+# 기학습된 Pretrained Network VGG16 이용
+
+from tensorflow.keras.applications import VGG16
+
+model_base = VGG16(weights='imagenet',
+                   include_top=False,
+                   input_shape=(150,150,3))
+
+print(model_base.summary())
+
+
+# 모델 구현
+from tensorflow.keras.preprocessing.image import ImageDataGenerator
+
+# ImageDataGenerator 객체 생성
+
+Train_Datagen = ImageDataGenerator(rescale= 1/255)
+Test_Datagen = ImageDataGenerator(rescale= 1/255)
+
+
+# ImageDataGenerator 설정
+
+train_dir = './cats_and_dogs_filtered/train'
+test_dir = './cats_and_dogs_filtered/test'
+
+
+train_generator = Train_Datagen.flow_from_directory(train_dir,   # 학습용 이미지를 가져올 폴더
+                                                    classes=['cats', 'dogs'],   # cats 폴더의 이미지 라벨을 0으로 세팅, dogs 폴더의 이미지 라벨을 1로 세팅
+                                                    target_size=(150, 150),   # 이미지 리사이징
+                                                    batch_size=20,   # 한 번에 20개의 이미지만 가져와서 학습
+                                                    class_mode='binary'    # 이진 분류일 경우 설정
+)
+
+test_generator = Test_Datagen.flow_from_directory(test_dir,   # 학습용 이미지를 가져올 폴더
+                                                  classes=['cats', 'dogs'],   # cats 폴더의 이미지 라벨을 0으로 세팅, dogs 폴더의 이미지 라벨을 1로 세팅
+                                                  target_size=(150, 150),   # 이미지 리사이징
+                                                  batch_size=20,   # 한 번에 20개의 이미지만 가져와서 학습
+                                                  class_mode='binary'    # 이진 분류일 경우 설정
+)
+
+
+
+
+from tensorflow.keras.models import Sequential
+from tensorflow.keras.layers import Flatten, Dense
+from tensorflow.keras.optimizers import Adam
+from keras.callbacks import EarlyStopping
+
+
+model = Sequential()
+
+model.add(model_base)
+
+
+# classification 하는 부분은 우리가 구현해야 함.
+# FC layer(DNN)의 input layer
+
+model.add(Flatten())   # 전체 데이터를 4차원에서 2차원으로
+
+model.add(Dense(units=256, activation='relu'))
+
+# output layer
+model.add(Dense(units=1, activation='sigmoid'))
+
+
+
+
+
+
+# compile
+model.compile(optimizer=Adam(learning_rate=0.0001),
+              loss='binary_crossentropy',
+              metrics=['accuracy'])
+
+earlyStopping = EarlyStopping(verbose = 1, monitor='accuracy', patience=5)
+
+model.fit(train_generator,
+          steps_per_epoch=100,
+          epochs=30,
+          verbose=1,
+          validation_data=test_generator,
+          validation_steps=50,
+          callbacks=earlyStopping)
+
+
+model.summary()
